@@ -1,0 +1,83 @@
+// backend/services/question.service.js
+const axios = require('axios');
+const Question = require('../models/Question.model');
+const logger = require('../utils/logger');
+
+const fetchQuestionsFromAPI = async (domain, count = 10) => {
+  try {
+    const categoryMap = {
+      'Technical': 18, // Computers
+      'Quantitative': 19, // Mathematics
+      'Verbal': 10, // Books
+      'Logical': 21 // Sports
+    };
+    
+    const response = await axios.get(
+      `https://opentdb.com/api.php?amount=${count}&category=${categoryMap[domain]}&type=multiple`
+    );
+    
+    return response.data.results.map(q => ({
+      domain,
+      questionText: decodeHTMLEntities(q.question),
+      options: [...q.incorrect_answers.map(decodeHTMLEntities), 
+               decodeHTMLEntities(q.correct_answer)].sort(() => Math.random() - 0.5),
+      correctAnswer: decodeHTMLEntities(q.correct_answer),
+      difficulty: ['easy', 'medium', 'hard'].indexOf(q.difficulty) + 1
+    }));
+  } catch (error) {
+    logger.error(`Error fetching questions from API: ${error.message}`);
+    throw error;
+  }
+};
+
+const decodeHTMLEntities = (text) => {
+  const entities = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#039;': "'"
+  };
+  
+  return text.replace(/&amp;|&lt;|&gt;|&quot;|&#039;/g, match => entities[match]);
+};
+
+const getQuestionsForUser = async (userId, domain, level) => {
+  try {
+    // Check user's attempted questions
+    const user = await User.findById(userId).select('attemptedQuestions');
+    const attemptedIds = user.attemptedQuestions.map(id => id.toString());
+    
+    // Find available questions
+    let questions = await Question.aggregate([
+      { $match: { 
+        domain, 
+        level: parseInt(level),
+        _id: { $nin: attemptedIds }
+      }},
+      { $sample: { size: 10 } }
+    ]);
+    
+    // If not enough questions in DB, fetch from API
+    if (questions.length < 10) {
+      const apiQuestions = await fetchQuestionsFromAPI(domain, 10 - questions.length);
+      
+      // Save new questions to DB
+      const savedQuestions = await Question.insertMany(
+        apiQuestions.map(q => ({ ...q, level }))
+      );
+      
+      questions = [...questions, ...savedQuestions];
+    }
+    
+    return questions;
+  } catch (error) {
+    logger.error(`Error getting questions for user: ${error.message}`);
+    throw error;
+  }
+};
+
+module.exports = {
+  getQuestionsForUser,
+  fetchQuestionsFromAPI
+};
