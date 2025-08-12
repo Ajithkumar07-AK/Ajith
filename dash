@@ -1,0 +1,108 @@
+// DomainSelection.jsx
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { Box, Typography, Button, Card, CardContent, Grid, CircularProgress } from '@mui/material';
+import { styled } from '@mui/material/styles';
+
+const DomainCard = styled(Card)(({ theme, selected }) => ({
+  cursor: 'pointer',
+  transition: 'transform 0.3s, box-shadow 0.3s',
+  border: selected ? `2px solid ${theme.palette.primary.main}` : '2px solid transparent',
+  '&:hover': {
+    transform: 'translateY(-5px)',
+    boxShadow: theme.shadows[4],
+  },
+}));
+
+const domains = [
+  { id: 'Technical', name: 'Technical', description: 'Programming and computer science questions' },
+  { id: 'Quantitative', name: 'Quantitative', description: 'Mathematics and numerical reasoning' },
+  { id: 'Verbal', name: 'Verbal', description: 'Language and comprehension skills' },
+  { id: 'Logical', name: 'Logical', description: 'Puzzles and reasoning challenges' },
+];
+
+const DomainSelection = () => {
+  const { currentUser, updateUserDomain } = useAuth();
+  const [selectedDomain, setSelectedDomain] = useState(currentUser?.domain || '');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (currentUser?.domain) {
+      navigate('/levels');
+    }
+  }, [currentUser, navigate]);
+
+  const handleDomainSelect = (domain) => {
+    setSelectedDomain(domain);
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedDomain) {
+      setError('Please select a domain');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      await updateUserDomain(selectedDomain);
+      navigate('/levels');
+    } catch (err) {
+      setError('Failed to update domain. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Box sx={{ maxWidth: '800px', mx: 'auto', p: 3 }}>
+      <Typography variant="h4" align="center" gutterBottom>
+        Select Your Domain
+      </Typography>
+      <Typography variant="body1" align="center" paragraph>
+        Choose the area you want to focus on for your aptitude tests.
+      </Typography>
+
+      {error && (
+        <Typography color="error" align="center" paragraph>
+          {error}
+        </Typography>
+      )}
+
+      <Grid container spacing={3} sx={{ mt: 2 }}>
+        {domains.map((domain) => (
+          <Grid item xs={12} sm={6} key={domain.id}>
+            <DomainCard
+              selected={selectedDomain === domain.id}
+              onClick={() => handleDomainSelect(domain.id)}
+            >
+              <CardContent>
+                <Typography variant="h6" component="div">
+                  {domain.name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {domain.description}
+                </Typography>
+              </CardContent>
+            </DomainCard>
+          </Grid>
+        ))}
+      </Grid>
+
+      <Box sx={{ mt: 4, textAlign: 'center' }}>
+        <Button
+          variant="contained"
+          size="large"
+          onClick={handleSubmit}
+          disabled={loading || !selectedDomain}
+        >
+          {loading ? <CircularProgress size={24} /> : 'Continue'}
+        </Button>
+      </Box>
+    </Box>
+  );
+};
+
+export default DomainSelection;
