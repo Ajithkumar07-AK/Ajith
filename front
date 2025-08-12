@@ -1,0 +1,87 @@
+// LoginForm.jsx
+import React, { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { Box, TextField, Button, Typography, Link, CircularProgress, Alert } from '@mui/material';
+import { styled } from '@mui/material/styles';
+
+const FormContainer = styled(Box)(({ theme }) => ({
+  maxWidth: '400px',
+  margin: '0 auto',
+  padding: theme.spacing(3),
+  borderRadius: theme.shape.borderRadius,
+  boxShadow: theme.shadows[3],
+  backgroundColor: theme.palette.background.paper,
+}));
+
+const LoginForm = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    try {
+      setError('');
+      setLoading(true);
+      await login(email, password);
+      navigate('/dashboard');
+    } catch (err) {
+      setError('Failed to log in. Please check your credentials.');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <FormContainer>
+      <Typography variant="h4" align="center" gutterBottom>
+        Login
+      </Typography>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      <form onSubmit={handleSubmit}>
+        <TextField
+          label="Email"
+          type="email"
+          fullWidth
+          margin="normal"
+          variant="outlined"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <TextField
+          label="Password"
+          type="password"
+          fullWidth
+          margin="normal"
+          variant="outlined"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+        <Button
+          type="submit"
+          fullWidth
+          variant="contained"
+          color="primary"
+          disabled={loading}
+          sx={{ mt: 3, mb: 2 }}
+        >
+          {loading ? <CircularProgress size={24} /> : 'Login'}
+        </Button>
+      </form>
+      <Typography variant="body2" align="center">
+        Don't have an account?{' '}
+        <Link href="/register" color="primary">
+          Sign Up
+        </Link>
+      </Typography>
+    </FormContainer>
+  );
+};
+
+export default LoginForm;
